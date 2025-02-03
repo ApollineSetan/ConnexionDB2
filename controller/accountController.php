@@ -59,6 +59,57 @@ function displayAccounts(PDO $bdd){
 
 function renderAccounts(PDO $bdd){
     $message = signUp($bdd);
+    $messagelogin = login($bdd);
     $listUsers = displayAccounts($bdd);
     include "./vue/account.php";
 }
+
+
+function login(PDO $bdd): string {
+    if (isset($_POST['submitlogin'])) {
+        // Vérifier que les champs email et password existent et ne sont pas vides
+        if (!isset($_POST['email']) || empty($_POST['email']) || !isset($_POST['password']) || empty($_POST['password'])) {
+            return "Veuillez remplir tous les champs.";
+        }
+
+        // Vérifier le format de l'email
+        if (!filter_var($_POST['email'], FILTER_VALIDATE_EMAIL)) {
+            return "Email pas au bon format.";
+        }
+
+        // Nettoyer les données
+        $email = sanitize($_POST['email']);
+        $password = sanitize($_POST['password']);
+
+        // Récupérer l'utilisateur par email
+        $user = getAccountByEmail($bdd, $email);
+        // Vérifier que l'utilisateur existe
+        if ($user === false) {
+            return "Cet utilisateur n'existe pas.";
+        }
+
+        // Vérifier que le mot de passe haché existe dans la base de données avant de le comparer
+        if (!isset($user['password']) || empty($user['password'])) {
+            return "Erreur : impossible de vérifier le mot de passe.";
+        }
+
+        // Vérifier le mot de passe avec password_verify
+        if (!password_verify($password, $user['password'])) {
+            return "Mot de passe incorrect.";
+        }
+
+        // Démarrer une session et stocker les données utilisateur
+        session_start();
+        $_SESSION['user'] = $user;
+
+        return "Connexion réussie. Bienvenue " . $user['firstname'] . " " . $user['lastname'];
+    }
+    return '';
+}
+
+
+/*
+*@method Me connecter
+*@param PDO $bdd
+*@return string
+*/
